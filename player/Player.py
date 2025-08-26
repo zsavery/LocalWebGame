@@ -1,58 +1,57 @@
 import random
-import socket
-
 
 from player.stats import PlayerStats
 
 
 class Player:
-    def __init__(self, connection=None, stats:PlayerStats=PlayerStats()):
+    def __init__(self, connection=None, address=None, stats: PlayerStats | None = None):
         self.connection = connection
-        self.address = None
-        self.stats = stats
+        self.address = address
+        self.stats: PlayerStats = stats if isinstance(stats, PlayerStats) else PlayerStats()
         self.position = {"x": random.randint(-100, 100),
                          "y": random.randint(-100, 100)}
 
-    def send(self, command, encoding="utf-8"):
-        self.connection.send(command.encode(encoding))
+    def send(self, command: str, encoding: str = "utf-8") -> bool:
+        if not self.connection:
+            return False
+        try:
+            self.connection.send(command.encode(encoding))
+            return True
+        except Exception:
+            return False
 
-    def is_alive(self):
+    def is_alive(self) -> bool:
         return self.stats.health > 0
 
-    def move(self, command):
+    def move(self, command: str, distance: int | float = 1) -> bool:
         if not isinstance(command, str):
-            return
+            return False
 
         direction = command.lower()
+        if direction == "right":
+            self.position["x"] += distance
+        elif direction == "left":
+            self.position["x"] -= distance
+        elif direction == "up":
+            self.position["y"] += distance
+        elif direction == "down":
+            self.position["y"] -= distance
+        else:
+            return False
+        return True
 
-        match direction:
-            case "left":
-                self.position["x"]+=1
-            case "right":
-                self.position["x"]-=1
-            case "up":
-                self.position["y"]+=1
-            case "down":
-                self.position["y"]-=1
-            case _:
-                return
-
-    def learn_skill(self, skill):
-        if self.stats.skills.contains(skill):
-            return
+    def learn_skill(self, skill) -> bool:
+        if skill in self.stats.skills:
+            return False
         if len(self.stats.skills) >= 4:
-            return
-        self.stats.skills.add(skill)
+            return False
+        self.stats.skills.append(skill)
+        return True
 
-    def add_item(self, item, count=1):
-        if len(self.stats.items) < self.stats.items_capacity :
+    def add_item(self, item_name: str, count: int = 1) -> bool:
+        return self.stats.add_item(item_name, count)
 
-            return
-
-        if item in self.stats.items.keys():
-            if len(self.stats.items[item]) < self.stats.slots_count:
-                self.stats.items[item] += count
-            return
-
-    def attack(self, msg="Slash"):
-        print(f"Plater {self.stats.name} used {msg} to attack!")
+    def attack(self, msg: str = "Slash") -> str:
+        text = f"Player {self.stats.name} used {msg} to attack!"
+        print(text)
+        return text
